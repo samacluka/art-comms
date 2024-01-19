@@ -9,9 +9,11 @@ import java.net.http.HttpHeaders;
 import java.util.Optional;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.stereotype.Component;
 
 import javax.net.ssl.SSLSession;
 
+@Component
 public class SimpleClient {
 
     private final HttpClient httpClient;
@@ -76,44 +78,47 @@ public class SimpleClient {
     }
 
     private record CustomHttpResponse<T>(int statusCode, HttpHeaders headers, T body) implements HttpResponse<T> {
+
+        static String NOT_IMPLEMENTED = "Not implemented";
+
         @Override
         public HttpRequest request() {
-            throw new UnsupportedOperationException("Not implemented");
+            throw new UnsupportedOperationException(NOT_IMPLEMENTED);
         }
 
         @Override
         public Optional<HttpResponse<T>> previousResponse() {
-            throw new UnsupportedOperationException("Not implemented");
+            throw new UnsupportedOperationException(NOT_IMPLEMENTED);
         }
 
         @Override
         public Optional<SSLSession> sslSession() {
-            throw new UnsupportedOperationException("Not implemented");
+            throw new UnsupportedOperationException(NOT_IMPLEMENTED);
         }
 
         @Override
         public URI uri() {
-            throw new UnsupportedOperationException("Not implemented");
+            throw new UnsupportedOperationException(NOT_IMPLEMENTED);
         }
 
         @Override
         public HttpClient.Version version() {
-            throw new UnsupportedOperationException("Not implemented");
+            throw new UnsupportedOperationException(NOT_IMPLEMENTED);
         }
 
         @Override
         public boolean equals(Object obj) {
-            throw new UnsupportedOperationException("Not implemented");
+            throw new UnsupportedOperationException(NOT_IMPLEMENTED);
         }
 
         @Override
         public int hashCode() {
-            throw new UnsupportedOperationException("Not implemented");
+            throw new UnsupportedOperationException(NOT_IMPLEMENTED);
         }
 
         @Override
         public String toString() {
-            throw new UnsupportedOperationException("Not implemented");
+            throw new UnsupportedOperationException(NOT_IMPLEMENTED);
         }
     }
 
