@@ -39,7 +39,7 @@ public class SimpleClient {
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(url))
                 .header("Content-Type", "application/json")
-                .POST(BodyPublishers.ofString(requestBody))
+                .POST(BodyPublishers.ofString(requestBody == null ? "" : requestBody))
                 .build();
 
         return httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
@@ -51,7 +51,7 @@ public class SimpleClient {
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(url))
                 .header("Content-Type", "application/json")
-                .PUT(BodyPublishers.ofString(requestBody))
+                .PUT(BodyPublishers.ofString(requestBody == null ? "" : requestBody))
                 .build();
 
         return httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())

@@ -4,5 +4,5 @@ import lombok.Data;
 
 @Data
 public class SimpleResponse {
-    private int id;
+    private Long id;
 }
