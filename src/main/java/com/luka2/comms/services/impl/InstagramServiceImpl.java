@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 
 import java.io.*;
 import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -36,6 +37,12 @@ public class InstagramServiceImpl implements InstagramService {
 
     @Value("server.port")
     private String port;
+
+    @Value("instagram.client.id")
+    private String igClientId;
+
+    @Value("instagram.client.secret")
+    private String igClientSecret;
 
     @Autowired
     SimpleClient client;
@@ -124,30 +131,26 @@ public class InstagramServiceImpl implements InstagramService {
         post.setIgMediaId(mediaId);
     }
 
-    private static String getIgUrl(Post post, IG_ROUTES route, Map<String, String> queryString){
+    private String getIgUrl(Post post, IG_ROUTES route, Map<String, String> queryString){
+        queryString.put("access_token", String.format("%s|%s", igClientId, igClientSecret));
         return String.format("%s/%s/%s/%s?%s", IG_BASE, IG_VERSION, post.getAccount().getIgUserId(), route.value, getQueryString(queryString));
     }
 
-    private static String getQueryString(Map<String, String> queryStringMap) {
+    private String getQueryString(Map<String, String> queryStringMap) {
         if (queryStringMap == null || queryStringMap.isEmpty()) {
             return "";
         }
 
-        try {
-            StringJoiner joiner = new StringJoiner("&");
+        StringJoiner joiner = new StringJoiner("&");
 
-            for (Map.Entry<String, String> entry : queryStringMap.entrySet()) {
-                String key = URLEncoder.encode(entry.getKey(), "UTF-8");
-                String value = URLEncoder.encode(entry.getValue(), "UTF-8");
+        for (Map.Entry<String, String> entry : queryStringMap.entrySet()) {
+            String key = URLEncoder.encode(entry.getKey(), StandardCharsets.UTF_8);
+            String value = URLEncoder.encode(entry.getValue(), StandardCharsets.UTF_8);
 
-                joiner.add(key + "=" + value);
-            }
-
-            return joiner.toString();
-        } catch (UnsupportedEncodingException e) {
-            e.printStackTrace();
-            return "";
+            joiner.add(key + "=" + value);
         }
+
+        return joiner.toString();
     }
 
 }
