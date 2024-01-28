@@ -1,0 +1,29 @@
+version: '3.3'
+services:
+  cron-job:
+    build:
+      context: .
+      dockerfile: Dockerfile-mysql
+      args:
+        - MYSQL_DATABASE=${MYSQL_DATABASE}
+        - MYSQL_USER=${MYSQL_USER}
+        - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+        - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+    container_name: mysql-container
+    ports:
+      - "${MYSQL_PORT}:3306"
+    volumes:
+      - C:\Users\Luka\Documents\Repos\luka\artcommsData\mysql:/var/lib/mysql
+    restart: always
+
+  ezreq:
+    build:
+      context: .
+      dockerfile: Dockerfile-artcomms
+    container_name: app-container
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - C:\Users\Luka\Documents\Repos\luka\artcommsData\logs:/usr/local/tomcat/logs
+    restart: always
