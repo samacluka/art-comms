@@ -23,6 +23,15 @@
 .env
 *.properties
 
+# LOCAL MAVEN #
+/.mvn/
+/.mvn/*
+mvnw
+mvnw.cmd
+
+# TOMCAT #
+./tomcat_conf
+
 # virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
 hs_err_pid*
 replay_pid*
@@ -32,6 +41,7 @@ HELP.md
 target/
 out/
 !.mvn/wrapper/maven-wrapper.jar
+!.mvn/wrapper/maven-wrapper.properties
 !**/src/main/**/target/
 !**/src/test/**/target/
 
