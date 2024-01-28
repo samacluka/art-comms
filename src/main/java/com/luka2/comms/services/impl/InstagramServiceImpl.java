@@ -1,5 +1,8 @@
 package com.luka2.comms.services.impl;
 
+import com.luka2.comms.dao.AccountDAO;
+import com.luka2.comms.dao.ImageDAO;
+import com.luka2.comms.dao.PostDAO;
 import com.luka2.comms.http.SimpleClient;
 import com.luka2.comms.models.Account;
 import com.luka2.comms.models.Image;
@@ -28,11 +31,23 @@ public class InstagramServiceImpl implements InstagramService {
         IG_ROUTES(String value) { this.value = value; }
     }
 
+    @Value("server.address")
+    private String address;
+
+    @Value("server.port")
+    private String port;
+
     @Autowired
     SimpleClient client;
 
-    @Value("baseUrl")
-    private String baseUrl;
+    @Autowired
+    AccountDAO accountDAO;
+
+    @Autowired
+    ImageDAO imageDAO;
+
+    @Autowired
+    PostDAO postDAO;
 
     public void createPost(byte[] imageData, String caption, Account account) throws Exception {
         createPost(Collections.singletonList(imageData), caption, account);
@@ -41,89 +56,72 @@ public class InstagramServiceImpl implements InstagramService {
     public void createPost(Iterable<byte[]> imagesData, String caption, Account account) throws Exception {
         if(account == null || account.getIgUserId() == null) return;
 
-        Set<Image> images = new HashSet<>();
-        for(byte[] imageData : imagesData) {
-            Image image = new Image();
-            image.setImageData( imageData );
-            images.add( image );
-        }
-
         Post post = new Post();
-        post.setImages( images );
         post.setCaption( caption );
         post.setAccount( account );
 
         account.getPosts().add( post );
 
-        if(images.size() == 1) {
-            Long containerId = createSingleImagePostContainer(post);
-            post.setIgContainerId(containerId);
-
-            Long mediaId = publishSingleImagePostMedia(post);
-            post.setIgMediaId(mediaId);
+        Set<Image> images = new HashSet<>();
+        for(byte[] imageData : imagesData) {
+            Image image = new Image();
+            image.setImageData( imageData );
+            images.add( image );
+            image.setPost( post );
+            imageDAO.save(image);
         }
-        else if(images.size() > 1 && images.size() <= 10){
-            createCarouselItemContainers(post);
 
-            Long containerId = createCarouselContainer(post);
-            post.setIgContainerId(containerId);
+        post.setImages( images );
 
-            Long mediaId = publishCarouselContainer(post);
-            post.setIgMediaId(mediaId);
-        }
-        else {
-            throw new Exception("incorrect number of images");
-        }
+        if(!post.hasValidNumberOfImages()) throw new Exception("incorrect number of images");
+
+        createItemContainers(post);
+        if(post.hasMultipleImages()) createCarouselContainer(post);
+        publishPost(post);
+
+        postDAO.save(post);
+        accountDAO.save(account);
     }
 
-    private void createCarouselItemContainers(Post post){
+    private void createItemContainers(Post post){
         for(Image image : post.getImages()){
-            String retrievalUrl = baseUrl + String.format("/images?id=%s", image);
+            String retrievalUrl = String.format("%s:%s/images?id=%s", address, port, image.getId());
 
             Map<String, String> queryString = new HashMap<>();
             queryString.put("image_url", retrievalUrl);
-            queryString.put("is_carousel_item ", "true");
+
+            if(post.hasMultipleImages()) {
+                queryString.put("is_carousel_item ", "true");
+            }
+            else {
+                queryString.put("caption ", post.getCaption());
+            }
 
             String url = getIgUrl(post, IG_ROUTES.MEDIA, queryString);
             Long containerId = client.post(url, null, SimpleResponse.class).body().getId();
 
             image.setIgContainerId(containerId);
+            imageDAO.save(image);
         }
     }
 
-    private Long createCarouselContainer(Post post){
+    private void createCarouselContainer(Post post){
         String imageContainerIds = post.getImageContainerIds().stream().map(String::valueOf).collect(Collectors.joining(","));
 
         Map<String, String> queryString = new HashMap<>();
         queryString.put("media_type", "CAROUSEL");
         queryString.put("children ", imageContainerIds);
         String url = getIgUrl(post, IG_ROUTES.MEDIA, queryString);
-        return client.post(url, null, SimpleResponse.class).body().getId();
+        Long containerId = client.post(url, null, SimpleResponse.class).body().getId();
+        post.setIgContainerId(containerId);
     }
 
-    private Long publishCarouselContainer(Post post){
-        Map<String, String> queryString = new HashMap<>();
-        queryString.put("creation_id ", String.valueOf(post.getIgContainerId()));
-        String url = getIgUrl(post, IG_ROUTES.MEDIA_PUBLISH, queryString);
-        return client.post(url, null, SimpleResponse.class).body().getId();
-    }
-
-    private Long createSingleImagePostContainer(Post post){
-        String retrievalUrl = baseUrl + String.format("/images?id=%s", post.getImages().stream().toList().get(0).getId());
-
-        Map<String, String> queryString = new HashMap<>();
-        queryString.put("image_url", retrievalUrl);
-        queryString.put("caption", post.getCaption());
-
-        String url = getIgUrl(post, IG_ROUTES.MEDIA, queryString);
-        return client.post(url, null, SimpleResponse.class).body().getId();
-    }
-
-    private Long publishSingleImagePostMedia(Post post){
+    private void publishPost(Post post){
         Map<String, String> queryString = new HashMap<>();
         queryString.put("creation_id", String.valueOf(post.getIgContainerId()));
         String url = getIgUrl(post, IG_ROUTES.MEDIA_PUBLISH, queryString);
-        return client.post(url, null, SimpleResponse.class).body().getId();
+        Long mediaId = client.post(url, null, SimpleResponse.class).body().getId();
+        post.setIgMediaId(mediaId);
     }
 
     private static String getIgUrl(Post post, IG_ROUTES route, Map<String, String> queryString){

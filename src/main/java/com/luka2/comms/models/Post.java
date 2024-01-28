@@ -16,11 +16,11 @@ public class Post {
     @Column(name = "id")
     private Long id;
 
-    @Column(name="ig_media_id")
-    private Long igMediaId;
-
     @Column(name="ig_container_id")
     private Long igContainerId;
+
+    @Column(name="ig_media_id")
+    private Long igMediaId;
 
     @Column(name = "caption")
     private String caption;
@@ -37,5 +37,13 @@ public class Post {
                 .map(Image::getIgContainerId)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
+    }
+
+    public boolean hasMultipleImages(){
+        return this.images.size() > 1;
+    }
+
+    public boolean hasValidNumberOfImages(){
+        return this.images.size() >= 1 && this.images.size() <= 10;
     }
 }
