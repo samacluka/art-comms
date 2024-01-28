@@ -1,4 +1,4 @@
-package com.luka2.comms.http;
+package com.luka2.comms.services.impl;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -9,17 +9,19 @@ import java.net.http.HttpHeaders;
 import java.util.Optional;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.stereotype.Component;
+import com.luka2.comms.services.HttpClientService;
+import org.hibernate.type.SerializationException;
+import org.springframework.stereotype.Service;
 
 import javax.net.ssl.SSLSession;
 
-@Component
-public class SimpleClient {
+@Service
+public class HttpClientServiceImpl implements HttpClientService {
 
     private final HttpClient httpClient;
     private final ObjectMapper objectMapper;
 
-    public SimpleClient() {
+    public HttpClientServiceImpl() {
         this.httpClient = HttpClient.newHttpClient();
         this.objectMapper = new ObjectMapper();
     }

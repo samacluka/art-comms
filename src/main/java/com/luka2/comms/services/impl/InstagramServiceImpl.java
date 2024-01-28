@@ -3,7 +3,6 @@ package com.luka2.comms.services.impl;
 import com.luka2.comms.dao.AccountDAO;
 import com.luka2.comms.dao.ImageDAO;
 import com.luka2.comms.dao.PostDAO;
-import com.luka2.comms.http.SimpleClient;
 import com.luka2.comms.models.Account;
 import com.luka2.comms.models.Image;
 import com.luka2.comms.models.Post;
@@ -13,7 +12,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.io.*;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
@@ -22,7 +20,8 @@ import java.util.stream.Collectors;
 @Service
 public class InstagramServiceImpl implements InstagramService {
 
-    private static final String IG_BASE = "https://graph.facebook.com";
+    private static final String IG_PROTOCOL = "https";
+    private static final String IG_HOST = "graph.facebook.com";
     private static final String IG_VERSION = "v18.0";
 
     private enum IG_ROUTES {
@@ -45,7 +44,7 @@ public class InstagramServiceImpl implements InstagramService {
     private String igClientSecret;
 
     @Autowired
-    SimpleClient client;
+    HttpClientServiceImpl client;
 
     @Autowired
     AccountDAO accountDAO;
@@ -56,18 +55,17 @@ public class InstagramServiceImpl implements InstagramService {
     @Autowired
     PostDAO postDAO;
 
-    public void createPost(byte[] imageData, String caption, Account account) throws Exception {
-        createPost(Collections.singletonList(imageData), caption, account);
+    public Account createPost(byte[] imageData, String caption, Account account) {
+        return createPost(Collections.singletonList(imageData), caption, account);
     }
 
-    public void createPost(Iterable<byte[]> imagesData, String caption, Account account) throws Exception {
-        if(account == null || account.getIgUserId() == null) return;
+    public Account createPost(Iterable<byte[]> imagesData, String caption, Account account) {
+        if(account == null || account.getIgUserId() == null) return null;
+        if(Post.validNumImages(getCount(imagesData))) return null;
 
         Post post = new Post();
         post.setCaption( caption );
         post.setAccount( account );
-
-        account.getPosts().add( post );
 
         Set<Image> images = new HashSet<>();
         for(byte[] imageData : imagesData) {
@@ -80,14 +78,13 @@ public class InstagramServiceImpl implements InstagramService {
 
         post.setImages( images );
 
-        if(!post.hasValidNumberOfImages()) throw new Exception("incorrect number of images");
+        account.setPosts( Collections.singleton(post) );
 
         createItemContainers(post);
         if(post.hasMultipleImages()) createCarouselContainer(post);
         publishPost(post);
 
-        postDAO.save(post);
-        accountDAO.save(account);
+        return accountDAO.save(account);
     }
 
     private void createItemContainers(Post post){
@@ -97,18 +94,14 @@ public class InstagramServiceImpl implements InstagramService {
             Map<String, String> queryString = new HashMap<>();
             queryString.put("image_url", retrievalUrl);
 
-            if(post.hasMultipleImages()) {
-                queryString.put("is_carousel_item ", "true");
-            }
-            else {
-                queryString.put("caption ", post.getCaption());
-            }
+            if(post.hasMultipleImages())    queryString.put("is_carousel_item", "true");
+            else                            queryString.put("caption", post.getCaption());
 
-            String url = getIgUrl(post, IG_ROUTES.MEDIA, queryString);
+            String url = getIgUrl(post.getAccount(), IG_ROUTES.MEDIA, queryString);
             Long containerId = client.post(url, null, SimpleResponse.class).body().getId();
 
-            image.setIgContainerId(containerId);
-            imageDAO.save(image);
+            if(post.hasMultipleImages())    image.setIgContainerId(containerId);
+            else                            post.setIgContainerId(containerId);
         }
     }
 
@@ -117,8 +110,10 @@ public class InstagramServiceImpl implements InstagramService {
 
         Map<String, String> queryString = new HashMap<>();
         queryString.put("media_type", "CAROUSEL");
-        queryString.put("children ", imageContainerIds);
-        String url = getIgUrl(post, IG_ROUTES.MEDIA, queryString);
+        queryString.put("caption", post.getCaption());
+        queryString.put("children", imageContainerIds);
+
+        String url = getIgUrl(post.getAccount(), IG_ROUTES.MEDIA, queryString);
         Long containerId = client.post(url, null, SimpleResponse.class).body().getId();
         post.setIgContainerId(containerId);
     }
@@ -126,26 +121,24 @@ public class InstagramServiceImpl implements InstagramService {
     private void publishPost(Post post){
         Map<String, String> queryString = new HashMap<>();
         queryString.put("creation_id", String.valueOf(post.getIgContainerId()));
-        String url = getIgUrl(post, IG_ROUTES.MEDIA_PUBLISH, queryString);
+        String url = getIgUrl(post.getAccount(), IG_ROUTES.MEDIA_PUBLISH, queryString);
         Long mediaId = client.post(url, null, SimpleResponse.class).body().getId();
         post.setIgMediaId(mediaId);
     }
 
-    private String getIgUrl(Post post, IG_ROUTES route, Map<String, String> queryString){
+    private String getIgUrl(Account account, IG_ROUTES route, Map<String, String> queryString){
         queryString.put("access_token", String.format("%s|%s", igClientId, igClientSecret));
-        return String.format("%s/%s/%s/%s?%s", IG_BASE, IG_VERSION, post.getAccount().getIgUserId(), route.value, getQueryString(queryString));
+        return String.format("%s://%s/%s/%s/%s?%s", IG_PROTOCOL, IG_HOST, IG_VERSION, account.getIgUserId(), route.value, getQueryString(queryString));
     }
 
     private String getQueryString(Map<String, String> queryStringMap) {
-        if (queryStringMap == null || queryStringMap.isEmpty()) {
-            return "";
-        }
+        if (queryStringMap == null || queryStringMap.isEmpty()) return "";
 
         StringJoiner joiner = new StringJoiner("&");
 
         for (Map.Entry<String, String> entry : queryStringMap.entrySet()) {
-            String key = URLEncoder.encode(entry.getKey(), StandardCharsets.UTF_8);
-            String value = URLEncoder.encode(entry.getValue(), StandardCharsets.UTF_8);
+            String key = URLEncoder.encode(entry.getKey().trim(), StandardCharsets.UTF_8);
+            String value = URLEncoder.encode(entry.getValue().trim(), StandardCharsets.UTF_8);
 
             joiner.add(key + "=" + value);
         }
@@ -153,4 +146,9 @@ public class InstagramServiceImpl implements InstagramService {
         return joiner.toString();
     }
 
+    private <T> int getCount(Iterable<T> collection){
+        int counter = 0;
+        for(T ignored : collection) counter++;
+        return counter;
+    }
 }

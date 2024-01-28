@@ -11,6 +11,9 @@ import java.util.stream.Collectors;
 @Entity
 @Table(name = "posts")
 public class Post {
+
+    public static final int MAX_IMAGE_NUM = 10;
+
     @Id
     @GeneratedValue(strategy= GenerationType.AUTO)
     @Column(name = "id")
@@ -25,7 +28,7 @@ public class Post {
     @Column(name = "caption")
     private String caption;
 
-    @OneToMany(mappedBy = "post")
+    @OneToMany(mappedBy = "post", cascade = CascadeType.ALL)
     private Set<Image> images;
 
     @ManyToOne
@@ -43,7 +46,7 @@ public class Post {
         return this.images.size() > 1;
     }
 
-    public boolean hasValidNumberOfImages(){
-        return this.images.size() >= 1 && this.images.size() <= 10;
+    public static boolean validNumImages(int numImages){
+        return numImages > 0 && numImages <= MAX_IMAGE_NUM;
     }
 }

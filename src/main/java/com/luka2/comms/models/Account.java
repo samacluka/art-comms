@@ -17,9 +17,9 @@ public class Account {
     @Column(name="ig_user_id")
     private Long igUserId;
 
-    @Column(name="name", length=100, nullable=false, unique=false)
+    @Column(name="name", length=100, nullable=false)
     private String name;
 
-    @OneToMany(mappedBy = "account")
+    @OneToMany(mappedBy = "account", cascade = CascadeType.ALL)
     private Set<Post> posts;
 }
