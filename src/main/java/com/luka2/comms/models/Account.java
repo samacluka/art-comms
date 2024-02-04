@@ -22,4 +22,7 @@ public class Account {
 
     @OneToMany(mappedBy = "account", cascade = CascadeType.ALL)
     private Set<Post> posts;
+
+    @OneToMany(mappedBy = "account", cascade = CascadeType.ALL)
+    private Set<Prompt> prompts;
 }

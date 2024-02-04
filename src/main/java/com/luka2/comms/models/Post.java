@@ -32,7 +32,7 @@ public class Post {
     private Set<Image> images;
 
     @ManyToOne
-    @JoinColumn(name="account_id", nullable=false)
+    @JoinColumn(name="account_id", referencedColumnName="id", nullable=false)
     private Account account;
 
     public Set<Long> getImageContainerIds(){

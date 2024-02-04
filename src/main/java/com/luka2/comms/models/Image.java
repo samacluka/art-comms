@@ -19,6 +19,6 @@ public class Image {
     private byte[] imageData;
 
     @ManyToOne
-    @JoinColumn(name="post_id", nullable=false)
+    @JoinColumn(name="post_id", referencedColumnName="id", nullable=false)
     private Post post;
 }
